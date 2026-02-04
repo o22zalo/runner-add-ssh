@@ -29,4 +29,5 @@ jobs:
           DOTENVRTDB_URL: ${{ secrets.DOTENVRTDB_URL }}
           SSH_RUNNER_PUBLIC_KEY: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCbXm/9+wS1+1LgS+5H4Vd/k4Kk3/Y+u5o/j8W19+t5/6T7bYpMv8sP user@example.com
         run: |
+          npm i
           node ./bin/runner-add-ssh.js
