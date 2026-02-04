@@ -96,10 +96,21 @@ async function execSudo(args, logger) {
       
       // Check if sudo is available
       if (process.platform !== 'win32') {
+        const sudoAvailable = await checkCommand('sudo', logger);
+        if (!sudoAvailable) {
+          throw new ProcessError('Command requires elevated privileges, but sudo is not available. Run as root or install/configure sudo.');
+        }
+
         try {
           return await spawnAsync('sudo', ['-n', ...args], { logger });
         } catch (sudoError) {
-          // If sudo -n fails, try with password prompt
+          const sudoMessage = sudoError.message || '';
+          const requiresPassword = sudoMessage.includes('password') || sudoMessage.includes('a terminal is required') || sudoMessage.includes('no tty');
+
+          if (!process.stdin.isTTY || requiresPassword) {
+            throw new ProcessError('Command requires sudo privileges, but non-interactive sudo is not available. Re-run with passwordless sudo or as root.');
+          }
+
           logger.debug('Sudo requires password, trying interactive sudo...');
           return await spawnAsync('sudo', args, { logger, captureOutput: false });
         }
