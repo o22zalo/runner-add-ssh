@@ -58,6 +58,15 @@ async function configureSSH(config, logger) {
     // Set proper permissions
     await execSudo(['chmod', '644', sshdConfigPath], logger);
 
+    // Ensure runtime directory exists for privilege separation
+    logger.debug('Ensuring /run/sshd exists...');
+    await execSudo(['mkdir', '-p', '/run/sshd'], logger);
+    await execSudo(['chmod', '755', '/run/sshd'], logger);
+
+    // Ensure host keys exist
+    logger.debug('Ensuring SSH host keys exist...');
+    await execSudo(['ssh-keygen', '-A'], logger);
+
     // Test configuration
     logger.debug('Testing sshd configuration...');
     await execSudo(['sshd', '-t'], logger);
