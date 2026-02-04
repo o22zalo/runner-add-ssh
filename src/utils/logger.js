@@ -123,6 +123,10 @@ Working directory: ${this.cwd}
 
   error(message, data = null) {
     console.error(`❌ ${message}`);
+    if (data) {
+      const maskedData = this._maskData(data);
+      console.error(JSON.stringify(maskedData, null, 2));
+    }
     this._log('ERROR', message, data);
   }
 

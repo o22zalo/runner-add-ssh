@@ -15,10 +15,11 @@ const { ProcessError } = require('../utils/errors');
  * @param {Object} options - Spawn options
  * @param {Logger} [options.logger] - Logger instance
  * @param {boolean} [options.captureOutput=true] - Capture stdout/stderr
+ * @param {boolean} [options.warnOnStderr=true] - Log stderr output as warning on success
  * @returns {Promise<Object>} Result with stdout, stderr, code
  */
 async function spawnAsync(command, args = [], options = {}) {
-  const { logger, captureOutput = true } = options;
+  const { logger, captureOutput = true, warnOnStderr = true } = options;
 
   return new Promise((resolve, reject) => {
     if (logger) {
@@ -59,6 +60,9 @@ async function spawnAsync(command, args = [], options = {}) {
 
     child.on('close', (code) => {
       if (code === 0) {
+        if (warnOnStderr && stderr.trim() && logger) {
+          logger.warn(`Command produced stderr output: ${stderr.trim()}`);
+        }
         resolve({ stdout, stderr, code });
       } else {
         reject(new ProcessError(
@@ -157,13 +161,41 @@ function canSudo() {
     return true;
   }
 
-  // TODO: Could check sudo -n -v to see if passwordless sudo is available
   return false;
+}
+
+/**
+ * Check if current process can use sudo without interaction.
+ *
+ * @param {Logger} logger - Logger instance
+ * @returns {Promise<boolean>} True if sudo is available and non-interactive access works
+ */
+async function hasSudoAccess(logger) {
+  if (process.platform === 'win32') {
+    return false;
+  }
+
+  if (canSudo()) {
+    return true;
+  }
+
+  const sudoAvailable = await checkCommand('sudo', logger);
+  if (!sudoAvailable) {
+    return false;
+  }
+
+  try {
+    await spawnAsync('sudo', ['-n', '-v'], { logger });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 module.exports = {
   spawnAsync,
   execSudo,
   checkCommand,
-  canSudo
+  canSudo,
+  hasSudoAccess
 };
