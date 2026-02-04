@@ -28,7 +28,8 @@ async function installSSH(config, logger) {
       checkCmd
     ], { logger });
 
-    if (checkResult.stdout.includes('State        : Installed')) {
+    const checkOutput = [checkResult.stdout, checkResult.stderr].join('\n');
+    if (checkOutput.includes('State        : Installed')) {
       logger.debug('OpenSSH Server already installed');
       return;
     }
@@ -139,7 +140,8 @@ async function startSSH(config, logger) {
       `Get-Service sshd | Select-Object -ExpandProperty Status`
     ], { logger });
 
-    if (!statusResult.stdout.includes('Running')) {
+    const statusOutput = [statusResult.stdout, statusResult.stderr].join('\n');
+    if (!statusOutput.includes('Running')) {
       throw new Error('SSH service failed to start');
     }
 
