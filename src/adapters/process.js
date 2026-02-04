@@ -96,10 +96,21 @@ async function execSudo(args, logger) {
       
       // Check if sudo is available
       if (process.platform !== 'win32') {
+        const sudoAvailable = await checkCommand('sudo', logger);
+        if (!sudoAvailable) {
+          throw new ProcessError('Command requires elevated privileges, but sudo is not available. Run as root or install/configure sudo.');
+        }
+
         try {
           return await spawnAsync('sudo', ['-n', ...args], { logger });
         } catch (sudoError) {
-          // If sudo -n fails, try with password prompt
+          const sudoMessage = sudoError.message || '';
+          const requiresPassword = sudoMessage.includes('password') || sudoMessage.includes('a terminal is required') || sudoMessage.includes('no tty');
+
+          if (!process.stdin.isTTY || requiresPassword) {
+            throw new ProcessError('Command requires sudo privileges, but non-interactive sudo is not available. Re-run with passwordless sudo or as root.');
+          }
+
           logger.debug('Sudo requires password, trying interactive sudo...');
           return await spawnAsync('sudo', args, { logger, captureOutput: false });
         }
@@ -146,13 +157,41 @@ function canSudo() {
     return true;
   }
 
-  // TODO: Could check sudo -n -v to see if passwordless sudo is available
   return false;
+}
+
+/**
+ * Check if current process can use sudo without interaction.
+ *
+ * @param {Logger} logger - Logger instance
+ * @returns {Promise<boolean>} True if sudo is available and non-interactive access works
+ */
+async function hasSudoAccess(logger) {
+  if (process.platform === 'win32') {
+    return false;
+  }
+
+  if (canSudo()) {
+    return true;
+  }
+
+  const sudoAvailable = await checkCommand('sudo', logger);
+  if (!sudoAvailable) {
+    return false;
+  }
+
+  try {
+    await spawnAsync('sudo', ['-n', '-v'], { logger });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 module.exports = {
   spawnAsync,
   execSudo,
   checkCommand,
-  canSudo
+  canSudo,
+  hasSudoAccess
 };

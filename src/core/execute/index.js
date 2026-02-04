@@ -8,6 +8,7 @@ const linuxExecutor = require('./linux');
 const windowsExecutor = require('./windows');
 const commonExecutor = require('./common');
 const { ProcessError } = require('../../utils/errors');
+const { hasSudoAccess } = require('../../adapters/process');
 
 /**
  * Execute the SSH setup plan
@@ -32,6 +33,11 @@ async function execute(plan, config, logger) {
     logger.info('');
 
     if (plan.os === 'linux') {
+      const sudoAccess = await hasSudoAccess(logger);
+      if (!sudoAccess) {
+        throw new ProcessError('Insufficient privileges to configure SSH. Run as root or configure passwordless sudo.');
+      }
+
       // Linux execution
       
       if (plan.needsInstall) {
@@ -102,7 +108,7 @@ async function execute(plan, config, logger) {
     return result;
 
   } catch (error) {
-    logger.error('❌ Execution failed:', error.message);
+    logger.error(`Execution failed: ${error.message}`);
     throw new ProcessError(`Execution failed: ${error.message}`);
   }
 }
