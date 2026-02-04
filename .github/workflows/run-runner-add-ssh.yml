@@ -1,0 +1,32 @@
+name: runner-add-ssh
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "bin/**"
+      - "src/**"
+      - "README.md"
+      - "package.json"
+      - ".github/workflows/run-runner-add-ssh.yml"
+permissions:
+  id-token: write # Required for OIDC
+  contents: write # Thêm dòng này để có quyền push
+
+jobs:
+  runner-add-ssh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3 # Set the maximum runtime for this job to 20 minutes
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true # CHỈ CẦN CÁI NÀY để giữ token cho push
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish to multi-registry
+        env:
+          DOTENVRTDB_URL: ${{ secrets.DOTENVRTDB_URL }}
+          SSH_RUNNER_PUBLIC_KEY: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCbXm/9+wS1+1LgS+5H4Vd/k4Kk3/Y+u5o/j8W19+t5/6T7bYpMv8sP user@example.com
+        run: |
+          node ./bin/runner-add-ssh.js
