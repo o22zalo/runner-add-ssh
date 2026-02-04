@@ -157,13 +157,41 @@ function canSudo() {
     return true;
   }
 
-  // TODO: Could check sudo -n -v to see if passwordless sudo is available
   return false;
+}
+
+/**
+ * Check if current process can use sudo without interaction.
+ *
+ * @param {Logger} logger - Logger instance
+ * @returns {Promise<boolean>} True if sudo is available and non-interactive access works
+ */
+async function hasSudoAccess(logger) {
+  if (process.platform === 'win32') {
+    return false;
+  }
+
+  if (canSudo()) {
+    return true;
+  }
+
+  const sudoAvailable = await checkCommand('sudo', logger);
+  if (!sudoAvailable) {
+    return false;
+  }
+
+  try {
+    await spawnAsync('sudo', ['-n', '-v'], { logger });
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 module.exports = {
   spawnAsync,
   execSudo,
   checkCommand,
-  canSudo
+  canSudo,
+  hasSudoAccess
 };
